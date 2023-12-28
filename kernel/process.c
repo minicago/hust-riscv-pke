@@ -16,6 +16,7 @@
 #include "pmm.h"
 #include "memlayout.h"
 #include "sched.h"
+#include "syscall.h"
 #include "spike_interface/spike_utils.h"
 
 //Two functions defined in kernel/usertrap.S
@@ -164,7 +165,14 @@ int free_process( process* proc ) {
   // but for proxy kernel, it (memory leaking) may NOT be a really serious issue,
   // as it is different from regular OS, which needs to run 7x24.
   proc->status = ZOMBIE;
-
+  if(proc->parent != NULL){
+    if(proc->parent->status == BLOCKED)
+      if( proc->parent->trapframe->regs.a0 == SYS_user_wait)
+        if(proc->parent->trapframe->regs.a1 == -1 || proc->parent->trapframe->regs.a1 == proc->pid){
+          proc->parent->status = READY;
+          insert_to_ready_queue(proc->parent);
+        }
+  }
   return 0;
 }
 
@@ -244,7 +252,9 @@ int do_fork( process* parent)
         break;
       case DATA_SEGMENT:;
         pte_t *pte = page_walk(parent->pagetable,parent->mapped_info[i].va,0);
+        
         if(*pte & PTE_D){
+          // sprint("!!!do 0x%llx\n",*pte);
           void* child_pa = alloc_page();
           memcpy(child_pa,(void*) PTE2PA(*pte), PGSIZE);
           user_vm_map(child->pagetable, parent->mapped_info[i].va, PGSIZE ,
@@ -259,7 +269,7 @@ int do_fork( process* parent)
         child->mapped_info[child->total_mapped_region].va = parent->mapped_info[i].va;
         child->mapped_info[child->total_mapped_region].npages =
           parent->mapped_info[i].npages;
-        child->mapped_info[child->total_mapped_region].seg_type = CODE_SEGMENT;
+        child->mapped_info[child->total_mapped_region].seg_type = DATA_SEGMENT;
         child->total_mapped_region++;
         break;        
     }
@@ -271,4 +281,19 @@ int do_fork( process* parent)
   insert_to_ready_queue( child );
 
   return child->pid;
+}
+
+int do_wait(process* proc, int pid){
+  if(pid == -1){
+    proc -> status = BLOCKED;
+    schedule();
+    return proc->trapframe->regs.a1;
+  }else{
+    if(pid < 0 || pid >= NPROC || procs[pid].parent->pid != proc->pid) return -1;
+    else {
+      proc -> status = BLOCKED;
+      schedule();
+      return proc->trapframe->regs.a1;
+    }
+  }
 }

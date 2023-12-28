@@ -15,10 +15,15 @@ int main(void) {
     if (pid == 0) {
         flag = 1;
         pid = fork();
-        if (pid == 0) {
+        
+        if (pid == 0) {            
+            // printu("!!ok\n");
+            // exit(0);
             flag = 2;
+            
             printu("Grandchild process end, flag = %d.\n", flag);
         } else {
+
             wait(pid);
             printu("Child process end, flag = %d.\n", flag);
         }
