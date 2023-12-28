@@ -263,7 +263,7 @@ int do_fork( process* parent)
         child->mapped_info[child->total_mapped_region].va = parent->mapped_info[i].va;
         child->mapped_info[child->total_mapped_region].npages =
           parent->mapped_info[i].npages;
-        child->mapped_info[child->total_mapped_region].seg_type = CODE_SEGMENT;
+        child->mapped_info[child->total_mapped_region].seg_type = DATA_SEGMENT;
         child->total_mapped_region++;
         break;        
     }
