@@ -19,14 +19,14 @@
 int map_pages(pagetable_t page_dir, uint64 va, uint64 size, uint64 pa, int perm) {
   uint64 first, last;
   pte_t *pte;
-
   for (first = ROUNDDOWN(va, PGSIZE), last = ROUNDDOWN(va + size - 1, PGSIZE);
-      first <= last; first += PGSIZE, pa += PGSIZE) {
+      first <= last; first += PGSIZE, pa += PGSIZE) {  
     if ((pte = page_walk(page_dir, first, 1)) == 0) return -1;
     if (*pte & PTE_V)
       panic("map_pages fails on mapping va (0x%lx) to pa (0x%lx)", first, pa);
     *pte = PA2PTE(pa) | perm | PTE_V;
   }
+  
   return 0;
 }
 
@@ -160,7 +160,10 @@ void *user_va_to_pa(pagetable_t page_dir, void *va) {
   // Also, it is possible that "va" is not mapped at all. in such case, we can find
   // invalid PTE, and should return NULL.
   //panic( "You have to implement user_va_to_pa (convert user va to pa) to print messages in lab2_1.\n" );
-  return (void*) (lookup_pa(page_dir,(uint64) va) + ((uint64) va & ((1<<PGSHIFT) - 1)));
+  uint64 pte_pa = lookup_pa(page_dir,(uint64) va);
+  if(pte_pa)
+    return (void*) (pte_pa + ((uint64) va & ((1<<PGSHIFT) - 1)));
+  else return NULL;
   //return (void*) lookup_pa(page_dir,(uint64) va);
 }
 
